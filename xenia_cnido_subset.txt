@@ -1,0 +1,131 @@
+ awk '/^>/{print ">"$2; next} {print}' xenSp1.proteins.fa > xenSp1.proteins.cleaned.fa
+
+    split(line, a, "\t")
+
+    key=a[1]
+    value=substr(line, index(line, "\t")+1)
+
+    map[key]=value
+    next
+}
+
+/^>/ {
+    id=$1
+    sub(/^>/, "", id)
+
+    if(id in map)
+        print ">" map[id]
+    else
+        print
+
+    next
+}
+
+{print}
+' id2symbol.txt xenSp1.proteins.cleaned.fa > xenSp1_proteins_symbols.fa
+
+xenia_sc <- readRDS(file = "All_integrated.RDS")
+
+colnames(xenia_sc@meta.data)
+head(xenia_sc@meta.data)
+
+hydra_sc <- readRDS(file = "Hydra_Seurat_IC.rds")
+
+counts <- xenia_sc@assays$RNA@counts
+meta <- xenia_sc@meta.data
+
+xenia <- CreateSeuratObject(
+  counts = counts,
+  meta.data = meta,
+  project = "Xenia"
+)
+
+xenia <- NormalizeData(xenia, normalization.method = "LogNormalize", scale.factor = 10000)
+
+xenia <- FindVariableFeatures(object = xenia)
+
+xenia <- ScaleData(xenia)
+
+xenia <- RunPCA(xenia, features = VariableFeatures(object = xenia))
+
+ElbowPlot(xenia)
+
+xenia <- FindNeighbors(xenia, dims = 1:20)
+
+xenia <- FindClusters(xenia, resolution = 0.19)
+
+xenia <- RunUMAP(xenia, dims = 1:20)
+
+DimPlot(xenia, reduction = "umap", label = TRUE)
+
+#minicollagen1
+FeaturePlot(xenia, features = "Xe-028815")
+
+cnido_subset<- subset(xenia, idents = c("12"))
+
+cnido_subset <- NormalizeData(cnido_subset, normalization.method = "LogNormalize", scale.factor = 10000)
+
+cnido_subset <- FindVariableFeatures(object = cnido_subset)
+
+cnido_subset <- ScaleData(cnido_subset)
+
+cnido_subset <- RunPCA(cnido_subset, features = VariableFeatures(object = cnido_subset))
+
+ElbowPlot(cnido_subset)
+
+cnido_subset <- FindNeighbors(cnido_subset, dims = 1:20)
+
+cnido_subset <- FindClusters(cnido_subset, resolution = 0.1)
+
+cnido_subset <- RunUMAP(cnido_subset, dims = 1:20)
+
+DimPlot(cnido_subset, reduction = "umap", label = TRUE)
+
+#ZNF845 - Xe-013530; 2 is progenitors
+FeaturePlot(cnido_subset, features = "Xe-013530")
+
+#mcol1 - in 2, 0, 1 - developing cnido types?
+FeaturePlot(cnido_subset, features = "Xe-028815")
+
+#FoxL2 - expressed in like seven cells
+FeaturePlot(cnido_subset, features = "FOXL2", order = TRUE)
+#in some other clusters - maybe neural?
+FeaturePlot(xenia, features = "FOXL2", order = TRUE)
+
+#AshA to look if these are neurons - ASCL3
+FeaturePlot(xenia, features = "ASCL3", order = TRUE)
+#seems like one cluster subset is neurons that FoxL2 was expressed in
+
+#GLWamide - Xe-009919, doesn't seem like it is really expressed
+FeaturePlot(xenia, features = "Xe-009919", order = TRUE)
+
+#Elav - FNE
+FeaturePlot(xenia, features = "FNE", order = TRUE)
+
+#mature cnido marker DHH - not really expressed
+FeaturePlot(cnido_subset, features = "DHH", order = TRUE)
+FeaturePlot(xenia, features = "DHH", order = TRUE)
+
+#PaxA - Paired - expressed everywhere except for 3
+FeaturePlot(cnido_subset, features = "Paired box-1", order = TRUE)
+
+#2 = progenitors
+#0 and 1 = developing cnidos
+#3 = mature cnidos
+
+
+cnido.markers <- FindAllMarkers(cnido_subset, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+write.csv(cnido.markers, "cnido_markers_xenia.csv", quote=F)
+
+raw_counts <- GetAssayData(object = cnido_subset, layer = "counts")
+Matrix::writeMM(raw_counts, file = "matrix.mtx")
+Xenia_barcodes <- colnames(raw_counts)
+write.table(Xenia_barcodes, file = "barcodes.tsv")
+Xenia_gene_names <- rownames(raw_counts)
+write.table(Xenia_gene_names, file = "features.tsv")
+cnido_subset.metadata <- cnido_subset@meta.data
+names(cnido_subset.metadata)[names(cnido_subset.metadata) == "RNA_snn_res.0.1"] <- "res"
+cnido_subset.metadata <- cnido_subset.metadata[,-2]
+write.table(cnido_subset.metadata, file = "metadata.tsv")
+

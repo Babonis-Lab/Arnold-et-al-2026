@@ -1,0 +1,81 @@
+cnido_subset <- readRDS(file = "cnido_subset.rds")
+
+library(Seurat)
+
+cluster.ids <- c("progen", "mat.cnidos", "progen", "nematocyte", "spirocyte", "nematocyte", "nematocyte", "spirocyte", "spirocyte", "progen", "nematocyte", "unknown")
+names(cluster.ids) <- levels(cnido_subset)
+cnido_subset_collapse <- RenameIdents(cnido_subset, cluster.ids)
+levels(cnido_subset_collapse)
+cnido_subset_collapse$seurat_clusters <- Idents(cnido_subset_collapse)
+saveRDS(cnido_subset_collapse, "cnido_subset_collapse.rds")
+
+raw_counts <- GetAssayData(object = cnido_subset_collapse, layer = "counts")
+Matrix::writeMM(raw_counts, file = "matrix.mtx")
+Apoc_barcodes <- colnames(raw_counts)
+write.table(Apoc_barcodes, file = "barcodes.tsv")
+Apoc_gene_names <- rownames(raw_counts)
+write.table(Apoc_gene_names, file = "features.tsv")
+Apoc_cnido.metadata <- cnido_subset@meta.data
+Apoc_cnido.metadata <- Apoc_cnido.metadata[,-2]
+write.table(Apoc_cnido.metadata, file = "metadata.tsv")
+cnido_subset <- readRDS(file = "cnido_subset_collapse.rds")
+
+neurogland_subset <- readRDS(file = "Apoc_neurogland_subset.rds")
+Idents(neurogland_subset)
+cluster.ids <- c("neurogland.progen", "neurogland.progen", "neurogland.progen", "neurogland.progen", "neural", "gland", "neurogland.progen", "gland", "gland", "gland", "neural", "neural", "neural", "neural", "neural", "neural", "gland", "gland", "neural", "neural", "neurogland.progen")
+names(cluster.ids) <- levels(neurogland_subset)
+neurogland_subset_collapse <- RenameIdents(neurogland_subset, cluster.ids)
+levels(neurogland_subset_collapse)
+neurogland_subset_collapse$seurat_clusters <- Idents(neurogland_subset_collapse)
+saveRDS(neurogland_subset_collapse, "neurogland_subset_collapse.rds")
+
+raw_counts <- GetAssayData(object = neurogland_subset_collapse, layer = "counts")
+Matrix::writeMM(raw_counts, file = "matrix.mtx")
+Apoc_barcodes <- colnames(raw_counts)
+write.table(Apoc_barcodes, file = "barcodes.tsv")
+Apoc_gene_names <- rownames(raw_counts)
+write.table(Apoc_gene_names, file = "features.tsv")
+Apoc_neurogland.metadata <- neurogland_subset_collapse@meta.data
+Apoc_neurogland.metadata <- Apoc_neurogland.metadata[,-2]
+write.table(Apoc_neurogland.metadata, file = "metadata.tsv")
+
+load("cnidocyte_coleetal_2024.Robj")
+levels(Idents(cnidocyte))
+
+cluster.ids <- c("progen", "progen", "nematocyte", "spirocyte", "mat.cnidos", "progen", "nematocyte", "nematocyte", "nematocyte", "spirocyte", "mat.cnidos", "mat.cnidos", "mat.cnidos")
+names(cluster.ids) <- levels(cnidocyte)
+Nvec_cnido_collapse <- RenameIdents(cnidocyte, cluster.ids)
+levels(Nvec_cnido_collapse)
+Nvec_cnido_collapse$seurat_clusters <- Idents(Nvec_cnido_collapse)
+saveRDS(Nvec_cnido_collapse, "Nvec_cnido_collapse.rds")
+
+raw_counts <- GetAssayData(object = Nvec_cnido_collapse, layer = "counts")
+Matrix::writeMM(raw_counts, file = "matrix.mtx")
+Nvec_barcodes <- colnames(raw_counts)
+write.table(Nvec_barcodes, file = "barcodes.tsv")
+Nvec_gene_names <- rownames(raw_counts)
+write.table(Nvec_gene_names, file = "features.tsv")
+Nvec_cnido.metadata <- Nvec_cnido_collapse@meta.data
+Nvec_cnido.metadata <- Nvec_cnido.metadata[,-1]
+write.table(Nvec_cnido.metadata, file = "metadata.tsv")
+
+load("neurogland-all.Robj")
+levels(Idents(neurogland.all))
+
+cluster.ids <- c("secretory", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neurogland.progen", "neurogland.progen", "secretory.progen", "secretory", "secretory", "secretory", "secretory", "secretory", "secretory", "secretory", "secretory", "secretory", "secretory", "secretory", "secretory", "neural", "neural", "neural", "neural", "neural", "neural", "neural", "neural", 'immune')
+names(cluster.ids) <- levels(neurogland.all)
+Nvec_neurogland_collapse <- RenameIdents(neurogland.all, cluster.ids)
+levels(Nvec_neurogland_collapse)
+Nvec_neurogland_collapse$seurat_clusters <- Idents(Nvec_neurogland_collapse)
+saveRDS(Nvec_neurogland_collapse, "Nvec_neurogland_collapse.rds")
+
+raw_counts <- GetAssayData(object = Nvec_neurogland_collapse, layer = "counts")
+Matrix::writeMM(raw_counts, file = "matrix.mtx")
+Nvec_barcodes <- colnames(raw_counts)
+write.table(Nvec_barcodes, file = "barcodes.tsv")
+Nvec_gene_names <- rownames(raw_counts)
+write.table(Nvec_gene_names, file = "features.tsv")
+Nvec_neurogland.metadata <- Nvec_neurogland_collapse@meta.data
+Nvec_neurogland.metadata <- Nvec_neurogland.metadata[,-1]
+write.table(Nvec_neurogland.metadata, file = "metadata.tsv")
+

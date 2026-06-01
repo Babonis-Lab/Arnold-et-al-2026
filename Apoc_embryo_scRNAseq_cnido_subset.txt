@@ -1,0 +1,59 @@
+cnido_subset<- subset(seurat_big, idents = c("11", "15", "18", "19", "21"))
+                      
+cnido_subset <- NormalizeData(cnido_subset, normalization.method = "LogNormalize", scale.factor = 10000)
+
+cnido_subset <- FindVariableFeatures(object = cnido_subset)
+
+cnido_subset <- ScaleData(cnido_subset)
+
+cnido_subset <- RunPCA(cnido_subset, features = VariableFeatures(object = cnido_subset))
+
+ElbowPlot(cnido_subset)
+
+cnido_subset <- FindNeighbors(cnido_subset, dims = 1:18)
+
+cnido_subset <- FindClusters(cnido_subset, resolution = 0.4)
+
+cnido_subset <- RunUMAP(cnido_subset, dims = 1:20)
+
+DimPlot(cnido_subset, reduction = "umap")
+
+#get back sample information
+cnido_subset$sample<-sapply(strsplit(colnames(cnido_subset),split="_"), `[`, 1)
+
+plot1 <- DimPlot(cnido_subset, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
+plot2 <- DimPlot(cnido_subset, reduction = "umap", group.by = "sample", label = FALSE, repel = TRUE)
+
+plot1
+plot2
+
+
+cnido.markers <- FindAllMarkers(cnido_subset, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+cnido.markers %>% group_by(cluster) %>% top_n(n = 2, wt = avg_log2FC)
+
+write.csv(cnido.markers, "cnido_markers_2-22-25.csv", quote=F)
+
+counts_table <- table(Idents(cnido_subset), cnido_subset$sample)print(counts_table)cluster_proportions <- prop.table(counts_table, margin = 1)print(cluster_proportions)
+
+cluster.ids <- c("progen1", "mat.cnidos", "progen2", "nem1", "robust.spiro", "nem2", "dev.nem1", "dev.robust.spiro", "gracile.spiro", "early.progen", "dev.nem2", "unknown")names(cluster.ids) <- levels(cnido_subset)cnido_subset <- RenameIdents(cnido_subset, cluster.ids)
+levels(cnido_subset)cnido_subset$seurat_clusters <- Idents(cnido_subset)
+
+custom_colors <- c("gracile.spiro" = "mediumpurple", "dev.robust.spiro" = "plum1", "robust.spiro" = "hotpink", "dev.nem1" = "lightblue", "nem1" = "royalblue", "dev.nem2" = "darkcyan", "nem2" = "cyan3", "mat.cnidos" = "firebrick", "progen1" = "darkgoldenrod1", "progen2" = "darkorange", "early.progen" = "peachpuff3", "unknown" = "slategray")
+
+DimPlot(cnido_subset, reduction = "umap", label = FALSE, pt.size = 0.5, cols = custom_colors) + NoLegend() + NoAxes()
+
+saveRDS(cnido_subset, "cnido_subset.rds")
+
+plot_list <- FeaturePlot(cnido_subet, features = c("Apoc2.1-6.1764", "Apoc2.1-3.35"), blend = TRUE, cols = c("lightgrey", "slateblue3", "indianred3"), combine = FALSE)
+plot_list
+
+my_order <- c("early.progen", "progen1", "progen2", "dev.nem1", "dev.nem2", "dev.robust.spiro", "nem1", "nem2", "robust.spiro", "gracile.spiro", "mat.cnidos", "unknown")
+Idents(cnido_subset) <- factor(Idents(cnido_subset), levels = my_order)
+
+DotPlot(cnido_subset, features = c("Apoc2.1-4.7012", "Apoc2.1-2.1706", "Apoc2.1-2.182", "Apoc2.1-9.504", "Apoc2.1-7.2839", "Apoc2.1-7.2838", "Apoc2.1-7.39", "Apoc2.1-7.2218", "Apoc2.1-7.2220", "Apoc2.1-14.1356", "Apoc2.1-7.2173", "Apoc2.1-7.2176"))
+
+# Select cells belonging to the sample
+cells_to_plot <- WhichCells(cnido_subset, expression = sample == "hpf72")
+
+# Plot, highlighting only those cells
+DimPlot(cnido_subset, reduction = "umap", cells.highlight = cells_to_plot) + NoLegend() + NoAxes() + scale_color_manual(values = c("grey", "deepskyblue"))

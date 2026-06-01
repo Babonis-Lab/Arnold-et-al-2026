@@ -1,0 +1,50 @@
+library(Seurat)
+
+hydra_sc <- readRDS(file = "Hydra_Seurat_IC.rds")
+colnames(hydra_sc@meta.data)
+head(hydra_sc@meta.data)
+
+counts <- hydra_sc@raw.data
+meta   <- hydra_sc@meta.data
+
+hydra <- CreateSeuratObject(
+  counts = counts,
+  meta.data = meta,
+  project = "Hydra"
+)
+
+
+pca_emb  <- hydra_sc@dr$pca@cell.embeddings
+tsne_emb <- hydra_sc@dr$tsne@cell.embeddings
+
+
+
+
+hydra[["pca"]] <- CreateDimReducObject(
+  embeddings = pca_emb[colnames(hydra), ],
+  key = "PC_",
+  assay = "RNA"
+)
+
+hydra[["tsne"]] <- CreateDimReducObject(
+  embeddings = tsne_emb[colnames(hydra), ],
+  key = "tSNE_",
+  assay = "RNA"
+)
+
+Idents(hydra) <- hydra$cluster.short
+
+DimPlot(hydra, reduction = "tsne")
+DimPlot(hydra_new, reduction = "pca")
+
+
+raw_counts <- GetAssayData(object = hydra, layer = "counts")
+Matrix::writeMM(raw_counts, file = "matrix.mtx")
+Hydra_barcodes <- colnames(raw_counts)
+write.table(Hydra_barcodes, file = "barcodes.tsv")
+Hydra_gene_names <- rownames(raw_counts)
+write.table(Hydra_gene_names, file = "features.tsv")
+Hydra_IC.metadata <- hydra@meta.data
+Hydra_IC.metadata <- Hydra_IC.metadata[,-2]
+Hydra_IC.metadata <- Hydra_IC.metadata[, 1, drop = FALSE]
+write.table(Hydra_IC.metadata, file = "metadata.tsv")

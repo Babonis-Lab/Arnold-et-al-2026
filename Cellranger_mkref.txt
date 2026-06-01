@@ -1,0 +1,39 @@
+#Making reference genome for Astrangia in using cell ranger
+
+#10x page about making custom reference genomes: https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/inputs/cr-3p-references
+
+
+#Cell Ranger supports the use of customer-generated references under the following conditions:
+1. Your reference should have only a small number of overlapping gene annotations. Reads aligning non-uniquely to multiple genes cause the pipeline to detect fewer molecules.
+2. Your FASTA and GTF files must be compatible with the open source splicing-aware RNA seq aligner, STAR. To be considered for transcriptome alignment, genes must have annotations with feature type 'exon' (column 3) in the GTF file.
+
+#Going to first make reference without filtering GTF file because we are not using an Ensembl GTF file which contain attributes that are used to filter. Will check if there are reads aligning to multiple genes later. 
+
+#log onto server and make a directory with net ID in workdir on server -> don't want to do this in BabLab server because it is connected over network and would be much slower
+
+ssh sa956@cbsulogin.biohpc.cornell.edu
+#enter password
+#using large Gen2
+ssh sa956@reserved_server_name.biohpc.cornell.edu
+#enter password
+
+cd /workdir
+mkdir sa956
+#copy over files to workdir, make sure in directory where these files exist when doing this
+cp GeneExt.apoc2.1.result.gtf /workdir/sa956
+cp apoculata_v2.1.fasta /workdir/sa956
+
+#back in /workdir/sa956
+cd /workdir/sa956
+#use screen to protect against losing connection/computer turning off
+screen
+#add cell ranger to path so that can run the program
+export PATH=/programs/cellranger-8.0.0:$PATH
+
+#run mkref to make the reference genome
+cellranger mkref --genome=Apoculata_ref_genome --fasta=apoculata_v2.1.fasta --genes=GeneExt.apoc2.1.result.gtf --nthreads 18 --memgb 64
+
+#copy ref genome to home folder
+cp -r /workdir/sa956/Apoculata_ref_gennome /home/babonislab/sa956/Apoc_scRNAseq_10-1-24
+
+#ran this on 10/22/24 with GTF file from Jake Warner with updated annotations including 3' UTR regions; using the fasta file he provided for genome because he renamed chromosomes and the GTF file is corresponding to those names

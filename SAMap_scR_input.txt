@@ -1,0 +1,19 @@
+raw_counts <- GetAssayData(object = cnido_subset, layer = "counts")Matrix::writeMM(raw_counts, file = "Apoc_cnido.mtx")Apoc_barcodes <- colnames(raw_counts)write.table(Apoc_barcodes, file = "barcodes.tsv")Apoc_gene_names <- rownames(raw_counts)write.table(Apoc_gene_names, file = "features.tsv")Apoc_cnido.metadata <- cnido_subset@meta.dataApoc_cnido.metadata <- Apoc_cnido.metadata[,-2]write.table(Apoc_cnido.metadata, file = "metadata.tsv")load(file = "cnidocyte_coleetal_2024.Robj")Nvec_counts <- GetAssayData(object = cnidocyte, layer = "counts")Nvec_barcodes <- colnames(Nvec_counts)
+Matrix::writeMM(Nvec_counts, file = "Nvec_cnido.mtx")write.table(Nvec_barcodes, file = "barcodes.tsv")Nvec_gene_names <- rownames(Nvec_counts)write.table(Nvec_gene_names, file = "features.tsv")Nvec_cnido.metadata <- cnidocyte@meta.dataNvec_cnido.metadata <- Nvec_cnido.metadata[,-2]write.table(Nvec_cnido.metadata, file = "metadata.tsv")
+
+
+Convert into h5ad files with python
+
+#heatmap of mapping scores from SAMap
+
+data.frame <- read.csv("cnido_mapping.csv", header = TRUE, row.names = 1)
+numeric_matrix <- as.matrix(data.frame)
+
+library(pheatmap)
+
+
+pheatmap(numeric_matrix, 
+         cluster_rows = FALSE,
+         cluster_cols = FALSE,
+         color = colorRampPalette((brewer.pal(n = 8, name = "Purples")))(50),
+        )

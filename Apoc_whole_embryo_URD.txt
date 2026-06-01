@@ -1,0 +1,192 @@
+
+#do this first part in RStudio
+
+library(dplyr)
+library(plyr)
+library(Seurat)
+library(data.table)
+library(magrittr)
+require(scales)
+library(URD)
+library(cowplot)
+
+Apoc_sc <- readRDS(file = "Apoc_sc_seurat.rds")
+
+DimPlot(Apoc_sc, reduction = "umap", label = "TRUE")
+
+
+#subset out the progenitor cells - cluster 1 that is made up of all 12hpf cells
+progen <- subset(Apoc_sc, idents = c("blastula"))
+
+#subet out terminal cells - not going to include mature cnido cluster 21 becaue that might confuse URD 
+
+
+term_cells <- subset(Apoc_sc, idents = c("gastrodermis", "mucous.gland", "neural", "secretory.3", "gland.mouth", "secretory.1", "gland.1", "secretory.2", "spirocytes", "nem.1", "nem.2"))
+
+
+#subset out intermediate cell clusters
+int_cells <- subset(Apoc_sc, idents = c("endoderm.progen", "progen.1", "progen.2", "sec.progen.1", "sec.progen.2", "neurogland.progen", "cnido.progen"))
+
+#extract cell population data as matricies
+term_cells.matrix <- GetAssayData(object = term_cells, assay = "RNA", layer = "data")
+int_cells.matrix <- GetAssayData(object = int_cells, assay = "RNA", layer = "data")
+progen.matrix <- GetAssayData(object = progen, assay = "RNA", layer = "data")
+
+#extract cell population specific metadata
+term_cells.metadata <- term_cells@meta.data
+term_cells.metadata$orig.ident <- "terminal"
+names(term_cells.metadata)[names(term_cells.metadata) == "RNA_snn_res.0.5"] <- "res"
+term_cells.metadata <- term_cells.metadata[,-4]
+
+int_cells.metadata <- int_cells@meta.data
+int_cells.metadata$orig.ident <- "intermediate"
+names(int_cells.metadata)[names(int_cells.metadata) == "RNA_snn_res.0.5"] <- "res"
+int_cells.metadata <- int_cells.metadata[,-4]
+
+progen.metadata <- progen@meta.data
+progen.metadata$orig.ident <- "progenitors"
+names(progen.metadata)[names(progen.metadata) == "RNA_snn_res.0.5"] <- "res"
+progen.metadata <- progen.metadata[,-4]
+
+list_cells <- list(term_cells.matrix,int_cells.matrix,progen.matrix)
+combined_matrix <- dsCombineDGE(list_cells)
+
+combined_metadata <- do.call("rbind", list(progen.metadata,int_cells.metadata,term_cells.metadata))
+
+#create an URD object
+#which will filter the data, then normalize and log-transform it.
+Apoc_URD <- createURD(count.data = combined_matrix, meta = combined_metadata, min.cells=5, min.counts=200)
+
+# Copy stage from @meta to @group.ids 
+#this takes in the orig.idents columns in the metadata, and placing it into a new slot in the axial data object called stage within group.ids. 
+Apoc_URD@group.ids$stage <- as.character(Apoc_URD@meta[rownames(Apoc_URD@group.ids),"orig.ident"])
+Apoc_URD@group.ids
+
+# Get variable genes for each group of 3 stages
+#now you are taking the stage names that you had in your group.ids slot in the URD object, and creating a new object called stages. This takes all of the unique stages and then creates
+stages <- sort(unique(Apoc_URD@group.ids$stage))
+stages
+
+#you are taking the variable genes per stage here. 
+var.by.stage <- lapply(1:length(stages), function(n) findVariableGenes(Apoc_URD, cells.fit=cellsInCluster(Apoc_URD, "stage", stages[[n]]), set.object.var.genes=F, diffCV.cutoff=0.3, mean.min=0.005, mean.max=100, main.use = stages[[n]], do.plot=T))
+
+# Combine the results from each group of stages into a single list of variable genes and load into the URD object
+var.genes <- sort(unique(unlist(var.by.stage)))
+Apoc_URD@var.genes <- var.genes
+
+saveRDS(Apoc_URD, "Apoc_URD_prePCA_var_4-28-26")
+
+#run this next part on cluster to calculate PCA
+#run the following in worker to run script
+
+module load R/4.2.3
+
+Rscript Apoc_URD_var_PCA.R
+
+#Apoc_URD_var_PCA.R script:
+
+library(URD)
+
+Apoc_URD <- readRDS(file = "Apoc_URD_prePCA_var_4-28-26")
+
+# Calculate PCA and consider those PCs that with standard deviation 2x expected by noise as significant
+Apoc_URD <- calcPCA(Apoc_URD, mp.factor = 2)
+pcSDPlot(Apoc_URD)
+
+# Calculate tSNE
+set.seed(19)
+Apoc_URD <- calcTsne(object = Apoc_URD)
+plotDim(Apoc_URD, "orig.ident", plot.title = "tSNE: Stage")
+
+saveRDS(Apoc_URD, file = "Apoc_URD_PCA_var_4-28-26.rds")
+
+#load file into R studio and look at/save PCA/tsne plots
+
+#next need to calculate diffusion maps - do on cluster, takes while
+#Apoc_URD_var_dm.R script:
+
+library(URD)
+
+Apoc_URD <- readRDS(file = "Apoc_URD_PCA_var_4-28-26.rds")
+
+#knn 230 is sqrt number of cells (53099)
+Apoc_URD <- calcDM(Apoc_URD, knn = 100, sigma=30)
+
+#save diffusion map to read in later
+saveRDS(Apoc_URD@dm, file = "Apoc_URD_var_dmmap.rds")
+
+#back in R, load in the diffusion maps to object and take a look at them
+
+Apoc_URD_var <- readRDS(file = "Apoc_URD_PCA_var_4-28-26.rds")
+dm.null.var <- readRDS(file = "Apoc_URD_var_dmmap.rds")
+Apoc_URD_var <- importDM(Apoc_URD_var, dm.null.var)
+plotDimArray(Apoc_URD_var, reduction.use = "dm", dims.to.plot = 1:18, outer.title = "Diffusion Map(Sigma NULL, nn=230): Stage", label="stage", plot.title="", legend=F)
+saveRDS(Apoc_URD_var, file = "Apoc_URD_var_dm.rds")
+
+#next run pseudotime on cluster
+library(URD)
+
+Apoc_URD_var <- readRDS(file = "Apoc_URD_var_dm.rds")
+
+root.cells <- rownames(Apoc_URD_var@group.ids)[Apoc_URD_var@group.ids$stage == "progenitors"]
+
+var.floods <- floodPseudotime(Apoc_URD_var, root.cells = root.cells, n=50, minimum.cells.flooded = 2, verbose=F)
+
+Apoc_URD_var <- floodPseudotimeProcess(Apoc_URD_var, var.floods, floods.name="pseudotime")
+
+saveRDS(Apoc_URD_var, file = "Apoc_URD_var_pseudo.rds")
+
+#in Rstudio
+Apoc_URD_prePCA <- readRDS(file = "./Apoc_URD_var/Apoc_URD_prePCA_var_4-28-26")
+
+stages <- sort(unique(Apoc_URD_prePCA@group.ids$stage))
+stages
+var.by.stage <- lapply(1:length(stages), function(n) findVariableGenes(Apoc_URD_prePCA, cells.fit=cellsInCluster(Apoc_URD_prePCA, "stage", stages[[n]]), set.object.var.genes=F, diffCV.cutoff=0.3, mean.min=0.005, mean.max=100, main.use = stages[[n]], do.plot=T))
+
+Apoc_URD_var <- readRDS(file = "Apoc_URD_var_pseudo.rds")
+
+pseudotimePlotStabilityOverall(Apoc_URD_var)
+
+Apoc.term <- urdSubset(Apoc_URD_var, cells.keep=cellsInCluster(Apoc_URD_var, "stage", "terminal"))
+
+Apoc.term@var.genes <- var.by.stage[[3]]
+
+set.seed(20)
+Apoc.term <- calcTsne(Apoc.term, which.dims = 1:10, perplexity = 50)
+
+Apoc_URD_var@group.ids[rownames(Apoc.term@group.ids), "tip.clusters"] <- Apoc.term@meta$`seurat_clusters`
+
+saveRDS(Apoc_URD_var, file = "Apoc_URD_var_walks.rds")
+
+#in R
+#Apoc_URD_var_walks.R script:
+library(URD)
+
+Apoc_URD_var <- readRDS(file = "Apoc_URD_var_walks.rds")
+
+Apoc_URD_var.ptlogistic <- pseudotimeDetermineLogistic(Apoc_URD_var, "pseudotime", optimal.cells.forward=40, max.cells.back=80, do.plot = T)
+
+# Bias the transition matrix acording to pseudotime
+Apoc_URD_var.biased.tm <-as.matrix(pseudotimeWeightTransitionMatrix(Apoc_URD_var, "pseudotime", logistic.params=Apoc_URD_var.ptlogistic))
+
+root.cells <- rownames(Apoc_URD_var@group.ids)[Apoc_URD_var@group.ids$stage == "progenitors"]
+
+# Simulate the biased random walks from each tip
+Apoc_URD_var.walks <- simulateRandomWalksFromTips(Apoc_URD_var, tip.group.id="tip.clusters", root.cells=root.cells, transition.matrix = Apoc_URD_var.biased.tm, n.per.tip = 25000, root.visits = 1, max.steps = 5000, verbose = F)
+
+# Process the biased random walks into visitation frequencies
+Apoc_URD_var <- processRandomWalksFromTips(Apoc_URD_var, Apoc_URD_var.walks, verbose = F)
+
+# Load the cells used for each tip into the URD object
+Apoc_URD_var.tree <- loadTipCells(Apoc_URD_var, "tip.clusters")
+
+# Build the tree
+Apoc_URD_var.tree <- buildTree(Apoc_URD_var.tree, pseudotime = "pseudotime", tips.use=c("8", "9", "7", "23", "12", "13", "16", "17", "18", "15", "19"), divergence.method = "preference", cells.per.pseudotime.bin = 80, bins.per.pseudotime.window = 5, save.all.breakpoint.info = T, p.thresh=0.001)
+
+saveRDS(Apoc_URD_var, file = "Apoc_URD_var_processed_walks.rds")
+saveRDS(Apoc_URD_var.tree, file = "Apoc_URD_var_tree.rds")
+
+Apoc_URD.tree <- nameSegments(Apoc_URD.tree, segments=c("15","19","18", "12", "16", "23", "17", "7", "9", "13", "8", "31", "32", "30", "25", "28", "29"), segment.names = c("nem1","nem2","spirocytes", "gland.mouth", "gland.1", "secretory.3", "secretory.2", "neural", "mucous.gland", "secretory.1", "gastrodermis", "progen.1", "progen.2", "sec.progen", "cnido.progen", "neurogland.progen", "neurogland.progen"))
+Apoc_URD.tree@tree$segment.names
+
+plotTree(Apoc_URD.tree, "segment", label.segments = F, color.tree = TRUE, discrete.colors = c("#00C085", "#00A6FF", "#EC8239", "#FD61D3", "#F8766D", "#B385FF", "#64B200", "#D874FD", "#00BFC4", "#00B81B", "#00B81B", "#DB8E00", "#00BD5C", "#FF63B6", "#7B96FF", "#00BADE", "#AEA200"), cell.size = 1, legend = F, label.x = F, title = NULL)

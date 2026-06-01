@@ -1,0 +1,122 @@
+#10x Genomics count page: https://www.10xgenomics.com/support/software/cell-ranger/latest/analysis/running-pipelines/cr-gex-count
+#from 10x Genomics website: The cellranger count takes FASTQ files and performs alignment, filtering, barcode counting, and UMI counting. It uses the 10x Barcodes to generate feature-barcode matrices, determine clusters, and perform gene expression analysis. 
+
+#files back from sequencing - two per sample in following format:
+SC2430_SA1_G3_Apoc_12hpf_2_10476958_22G2WHLT4_S9_L004_R1_001.fastq.gz -> cell barcode and UMI info
+SC2430_SA1_G3_Apoc_12hpf_2_10476958_22G2WHLT4_S9_L004_R2_001.fastq.gz -> RNAseq read
+
+#move these fast files into a directory together, e.g.:
+mkdir Apoc_12hpf_fastqs
+mv SC2430_SA1_G3_Apoc_12hpf_2_10476958_22G2WHLT4_S9_L004_R1_001.fastq.gz Apoc_12hpf_fastqs
+mv SC2430_SA1_G3_Apoc_12hpf_2_10476958_22G2WHLT4_S9_L004_R2_001.fastq.gz Apoc_12hpf_fastqs
+#did this for all of the timepoints
+
+#using med gen2, 40 cores server
+#open screen for doing this
+screen
+#add cell ranger to path so that can run the program
+export PATH=/programs/cellranger-8.0.0:$PATH
+
+#open more screens to run simultaneously
+Ctrl+A c
+
+#can switch between screens
+ctrl+a n
+
+#if get disconnected/need to close computer, etc. log back in to server, then use the following to reconnect:
+screen -d -r 
+
+#12hpf_cellcount
+cellranger count \
+--id=Apoc_12hpf \
+--transcriptome=/workdir/sa956/Apoculata_ref_genome \
+--fastqs=/home/babonislab/sa956/Apoc_scRNAseq_10-1-24/Apoc_12hpf_fastqs \
+--sample=SC2430_SA1_G3_Apoc_12hpf_2_10476958_22G2WHLT4 \
+--create-bam=true \
+--localcores=8 \
+--localmem=64
+
+#24hpf_cellcount
+cellranger count \
+--id=Apoc_24hpf \
+--transcriptome=/workdir/sa956/Apoculata_ref_genome \
+--fastqs=/home/babonislab/sa956/Apoc_scRNAseq_10-1-24/Apoc_24hpf_fastqs \
+--sample=SC2430_SA2_G3_Apoc_24hpf_2_10476958_22G2WHLT4 \
+--create-bam=true \
+--localcores=8 \
+--localmem=64
+
+#36hpf_cellcount
+cellranger count \
+--id=Apoc_36hpf \
+--transcriptome=/workdir/sa956/Apoculata_ref_genome \
+--fastqs=/home/babonislab/sa956/Apoc_scRNAseq_10-1-24/Apoc_36hpf_fastqs \
+--sample=SC2430_SA3_G3_Apoc_36hpf_2_10476958_22G2WHLT4 \
+--create-bam=true \
+--localcores=8 \
+--localmem=64
+
+#48hpf_cellcount
+cellranger count \
+--id=Apoc_48hpf \
+--transcriptome=/workdir/sa956/Apoculata_ref_genome \
+--fastqs=/home/babonislab/sa956/Apoc_scRNAseq_10-1-24/Apoc_48hpf_fastqs \
+--sample=SC2430_SA4_G3_Apoc_48hpf_1_10476958_22G2WHLT4 \
+--create-bam=true \
+--localcores=8 \
+--localmem=64
+
+#ran first four samples 10/22/24 with new reference genome (generated 10/22/24) simultaneously in different screens
+#took approx. 6-8 hours to run
+
+#60hpf_cellcount
+cellranger count \
+--id=Apoc_60hpf \
+--transcriptome=/workdir/sa956/Apoculata_ref_genome \
+--fastqs=/home/babonislab/sa956/Apoc_scRNAseq_10-1-24/Apoc_60hpf_fastqs \
+--sample=SC2430_SA5_G3_Apoc_60hpf_2_10476958_22G2WHLT4 \
+--create-bam=true \
+--localcores=8 \
+--localmem=64
+
+#72hpf_cellcount
+cellranger count \
+--id=Apoc_72hpf \
+--transcriptome=/workdir/sa956/Apoculata_ref_genome \
+--fastqs=/home/babonislab/sa956/Apoc_scRNAseq_10-1-24/Apoc_72hpf_fastqs \
+--sample=SC2430_SA6_G3_Apoc_72hpf_1_10476958_22G2WHLT4 \
+--create-bam=true \
+--localcores=8 \
+--localmem=64
+
+#84hpf_cellcount
+cellranger count \
+--id=Apoc_84hpf \
+--transcriptome=/workdir/sa956/Apoculata_ref_genome \
+--fastqs=/home/babonislab/sa956/Apoc_scRNAseq_10-1-24/Apoc_84hpf_fastqs \
+--sample=SC2430_SA7_G3_Apoc_84hpf_1_10476958_22G2WHLT4 \
+--create-bam=true \
+--localcores=8 \
+--localmem=64
+
+#96hpf_cellcount
+cellranger count \
+--id=Apoc_96hpf \
+--transcriptome=/workdir/sa956/Apoculata_ref_genome \
+--fastqs=/home/babonislab/sa956/Apoc_scRNAseq_10-1-24/Apoc_96hpf_fastqs \
+--sample=SC2430_SA8_G3_Apoc_96hpf_2_10476958_22G2WHLT4 \
+--create-bam=true \
+--localcores=8 \
+--localmem=64
+
+#copy output into home folder
+cp -r Apoc_12hpf/ /home/babonislab/sa956/Apoc_scRNAseq_10-1-24 
+
+#24hpf_cellcount - force cells to 7k
+cellranger count \
+--id=Apoc_24hpf_force \
+--transcriptome=/workdir/sa956/Apoculata_ref_genome \
+--fastqs=/home/babonislab/sa956/Apoc_scRNAseq_10-1-24/Apoc_24hpf_fastqs \
+--sample=SC2430_SA2_G3_Apoc_24hpf_2_10476958_22G2WHLT4 \
+--create-bam=true \
+--force-cells=7000

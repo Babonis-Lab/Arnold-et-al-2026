@@ -1,0 +1,65 @@
+library(Seurat)
+
+cnido_subset <- readRDS(file = "cnido_subset.rds")
+#gives number of cells in each cluster
+cnido_cells <- table(cnido_subset$seurat_clusters)
+write.table(cnido_cells, file = "Apoc_cnido_cells_count.csv")
+# nFeature for each cluster
+counts <- GetAssayData(cnido_subset, assay = "RNA", layer = "counts")
+clusters <- levels(Idents(cnido_subset))
+result <- sapply(clusters, function(cl) {
+  cells <- WhichCells(cnido_subset, idents = cl)
+  sum(rowSums(counts[, cells]) != 0)
+})
+write.table(result, file = "Apoc_cnido_genes_cluster.csv")
+
+Apoc_neurogland <- readRDS(file = "Apoc_neurogland_subset.rds")
+neurogland_cells <- table(Apoc_neurogland$clusters)
+write.table(neurogland_cells, file = "Apoc_neurogland_cells.csv")
+# nFeature for each cluster
+counts <- GetAssayData(Apoc_neurogland, assay = "RNA", layer = "counts")
+clusters <- levels(Idents(Apoc_neurogland))
+result <- sapply(clusters, function(cl) {
+  cells <- WhichCells(Apoc_neurogland, idents = cl)
+  sum(rowSums(counts[, cells]) != 0)
+})
+write.table(result, file = "Apoc_neurogland_genes_cluster.csv")
+
+load("neurogland-all.Robj")
+neurogland_cells <- table(neurogland.all$IDs)
+write.table(neurogland_cells, file = "Nvec_neurogland_cells.csv")
+# nFeature for each cluster
+counts <- GetAssayData(neurogland.all, assay = "RNA", layer = "counts")
+clusters <- levels(Idents(neurogland.all))
+result <- sapply(clusters, function(cl) {
+  cells <- WhichCells(neurogland.all, idents = cl)
+  sum(rowSums(counts[, cells]) != 0)
+})
+write.table(result, file = "Nvec_neurogland_genes_cluster.csv")
+
+load("cnidocyte_coleetal_2024.Robj")
+cnido_cells <- table(cnidocyte$IDs)
+write.table(cnido_cells, file = "Nvec_cnido_cells.csv")
+# nFeature for each cluster
+counts <- GetAssayData(cnidocyte, assay = "RNA", layer = "counts")
+clusters <- levels(Idents(cnidocyte))
+result <- sapply(clusters, function(cl) {
+  cells <- WhichCells(cnidocyte, idents = cl)
+  sum(rowSums(counts[, cells]) != 0)
+})
+write.table(result, file = "Nvec_cnido_genes_cluster.csv")
+
+AllData <- read.csv("All_Data_genes_cells.csv", header = TRUE)
+
+library(ggplot2)
+
+AllData$Cluster <- factor(AllData$Cluster, levels = unique(AllData$Cluster))
+
+ggplot(AllData, aes(x = Cluster, y = No..Genes.No..Cells)) +
+  geom_point() +
+  geom_hline(yintercept = mean(AllData$No..Genes.No..Cells, na.rm = TRUE),
+             linetype = "dashed", color = "black") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, just = 0.5)) +
+  labs(y = "Number of Genes / Number of Cells") +
+  FontSize(4)
+

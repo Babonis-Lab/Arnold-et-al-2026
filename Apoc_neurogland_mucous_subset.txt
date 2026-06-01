@@ -1,0 +1,65 @@
+library(Seurat)
+library(dplyr)
+library(plyr)
+library(data.table)
+
+Apoc_sc <- readRDS(file = "Apoc_embryo_sc_final.rds")
+
+neurogland_subset<- subset(Apoc_sc, idents = c("neurogland.progen", "neural", "sec.progen.1", "gland.mouth", "gland.1", "sec.progen.2", "secretory.1", "secretory.2), "secretory.3", "mucous.gland")
+
+neurogland_subset <- NormalizeData(neurogland_subset, normalization.method = "LogNormalize", scale.factor = 10000)
+
+neurogland_subset <- FindVariableFeatures(object = neurogland_subset)
+
+neurogland_subset <- ScaleData(neurogland_subset)
+
+neurogland_subset <- RunPCA(neurogland_subset, features = VariableFeatures(object = neurogland_subset))
+
+ElbowPlot(neurogland_subset)
+
+neurogland_subset <- FindNeighbors(neurogland_subset, dims = 1:20)
+
+neurogland_subset <- FindClusters(neurogland_subset, resolution = 0.6)
+
+neurogland_subset <- RunUMAP(neurogland_subset, dims = 1:20)
+
+DimPlot(neurogland_subset, reduction = "umap")
+
+#get back sample information
+neurogland_subset$sample<-sapply(strsplit(colnames(neurogland_subset),split="_"), `[`, 1)
+
+plot1 <- DimPlot(neurogland_subset, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
+plot2 <- DimPlot(neurogland_subset, reduction = "umap", group.by = "sample", label = FALSE, repel = TRUE)
+
+plot1
+plot2
+
+seurat.markers <- FindAllMarkers(Apoc_neurogland, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+seurat.markers %>% group_by(cluster) %>% top_n(n = 2, wt = avg_log2FC)
+
+#read in annotations
+annots<- read.table(file="apoculata_proteins_v2.1.renamed.new.totally_annotated.txt", sep='\t', header=T, quote="")
+annots$gene_ID <- gsub("-RA","",annots$gene_ID)
+annots$gene_ID <- gsub("_","-",annots$gene_ID)
+
+
+seurat.markers <- merge(seurat.markers,annots, by.x='gene',by.y='gene_ID', all.x=T)
+
+write.csv(seurat.markers, "neurogland_mucous_markers.csv", quote=F)
+
+cluster.ids <- c("S.progen.1", "S.progen.2", "NGD.progen", "NGD.early.1", "pSCs", "S.early", "NGD.early.2", "M.1", "N1.1", "S.progen.1", "M.2", "S.progen.1", "NGD.1", "N1.2", "G1", "S2", "N.1", "S1", "N.2", "GM.1", "N.3", "M.3", "S3", "GM.2", "GM.3", "S.progen.1", "N.4", "NGD.2")
+names(cluster.ids) <- levels(Apoc_neurogland)
+Apoc_neurogland <- RenameIdents(Apoc_neurogland, cluster.ids)
+Apoc_neurogland[["clusters"]] <- Idents(object = Apoc_neurogland)
+
+Apoc_counts <- GetAssayData(object = Apoc_neurogland, layer = "counts")
+Apoc_barcodes <- colnames(Apoc_counts)
+Matrix::writeMM(Apoc_counts, file = "matrix.mtx")
+write.table(Apoc_barcodes, file = "barcodes.tsv")
+Apoc_gene_names <- rownames(Apoc_counts)
+write.table(Apoc_gene_names, file = "features.tsv")
+Apoc_neuro.metadata <- Apoc_neurogland@meta.data
+Apoc_neuro.metadata <- Apoc_neuro.metadata[,-1]
+write.table(Apoc_neuro.metadata, file = "metadata.tsv")
+
+saveRDS(Apoc_neurogland, file = "Apoc_neurogland_mucous_subset.rds")
