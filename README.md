@@ -11,3 +11,4 @@
 **embryo_Cellranger_count.txt**: running Cellranger count with Astrangia developmental cell atlas data \
 **subcluster_genes_cells_numbers.txt**: extracting the total number of genes expressed and number of cells per each cluster in Astrangia and Nematostella cnidoglandular datasets \
 **xenia_cnido_subset.txt**: making a cnidocyte subset from the Xenia all (adult and regeneration) scRNAseq dataset
+**general_TAI_code.txt**: phylostratigraphy analysis code adapted from GenEra documentation and Piovani et al. 2023
