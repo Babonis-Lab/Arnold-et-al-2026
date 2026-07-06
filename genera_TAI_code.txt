@@ -1,0 +1,92 @@
+#had to use newest version of diamonds (2.2.2) to make the database from NCBI nr data because of differences in taxonomy rankings that have changed since GenERA was built
+#followed the documentation for GenERA for making the database
+
+#was able to run step 1 of GenERA but then it was unable to make ncbi_lineages because of parsing error due to the same taxonomy ranking differences
+
+#this is an open issue from April on GitHub - points to a ncbi lineage file to use instead, so downloaded that
+
+docker1 run --rm   -v $(pwd):/working-dir   -w /working-dir   josuebarrera/genera   genEra   -q Apoc_prot.fa   -t 165419   -b /working-dir/nr   -d /working-dir/taxdump   -r ncbi_lineages_2022-07-28.csv -p /working-dir/tmp_165419_32477/165419_Diamond_results.bout
+
+#for Nvec
+docker1 run --rm   -v $(pwd):/working-dir   -w /working-dir   josuebarrera/genera   genEra   -q Nvec_prot.fa   -t 45351   -b /working-dir/nr   -d /working-dir/taxdump   -r ncbi_lineages_2022-07-28.csv
+
+Apoc_sc <- readRDS(file = "Apoc_embryo_sc_final.rds")
+library(Seurat)
+install.packages("myTAI", dependencies = TRUE)
+library(myTAI)
+library(tibble)
+library(ggplot2)
+
+phylostrata_Ap <- read.table("165419_gene_ages.tsv",sep = "\t")
+#change the column names
+colnames(phylostrata_Ap) <- c("GeneID","name_PS","phylostratum","score")
+#calculate the average expression across each of the clusters
+Ap_average <- log1p(AverageExpression(Apoc_sc)$RNA)
+Ap_average <- rownames_to_column(as.data.frame(Ap_average), "GeneID")
+#omits any NAs in the data
+phylostrata_Ap <- na.omit(phylostrata_Ap)
+#subsets only genes that are in the phylostrata data
+Ap_average <- subset(Ap_average, subset = Ap_average$GeneID %in% phylostrata_Ap$GeneID)
+Phylo_expr_Ap <- match_map(Ap_average, phylostrata_Ap[,c("phylostratum","GeneID")])
+TAI <- as.data.frame(TAI(Phylo_expr_Ap))
+TAI <- rownames_to_column(TAI, var= "cluster")
+colnames(TAI) <- c("cluster","TAI")
+custom_colors <- c("nem.1" = "#EC8239", "nem.2" = "#64B200", "spirocytes" = "#B385FF", "mat.cnidos" = "#FF6B94", "cnido.progen" = "#00BFC4", "neural" = "#7B96FF", "secretory.3" = "#D874FD", "neurogland.progen" = "#00B81B", "mucous.gland" = "#AEA200", "gland.mouth" = "#00C085", "secretory.1" = "#00A6FF", "gland.1" = "#FD61D3", "secretory.2" = "#F8766D", "blastula" = "#EF67EB", "progen.1" = "#00BD5C", "progen.2" = "#FF63B6", "sec.progen.1" = "#DB8E00", "sec.progen.2" = "#00B2F3", "endoderm.progen" = "#00C1A7", "gastrodermis" = "#00BADE")
+Apoc_TAI <- ggplot(TAI) + geom_point(aes(x=reorder(cluster,TAI), y=TAI, colour= factor(cluster)), size = 3) + RotatedAxis() +  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), legend.position = "none") +  scale_color_manual(values = custom_colors)
+Apoc_TAI
+
+Ap_cnido <- readRDS(file = "cnido_subset.rds")
+phylostrata_Ap <- read.table("165419_gene_ages.tsv",sep = "\t")
+#change the column names
+colnames(phylostrata_Ap) <- c("GeneID","name_PS","phylostratum","score")
+#calculate the average expression across each of the clusters
+Ap_average <- log1p(AverageExpression(Ap_cnido)$RNA)
+Ap_average <- rownames_to_column(as.data.frame(Ap_average), "GeneID")
+#omits any NAs in the data
+phylostrata_Ap <- na.omit(phylostrata_Ap)
+#subsets only genes that are in the phylostrata data
+Ap_average <- subset(Ap_average, subset = Ap_average$GeneID %in% phylostrata_Ap$GeneID)
+Phylo_expr_Ap <- match_map(Ap_average, phylostrata_Ap[,c("phylostratum","GeneID")])
+TAI <- as.data.frame(TAI(Phylo_expr_Ap))
+TAI <- rownames_to_column(TAI, var= "cluster")
+colnames(TAI) <- c("cluster","TAI")
+custom_colors <- c("gracile.spiro" = "mediumpurple", "dev.robust.spiro" = "plum1", "robust.spiro" = "hotpink", "dev.nem1" = "lightblue", "nem1" = "royalblue", "dev.nem2" = "darkcyan", "nem2" = "cyan3", "mat.cnidos" = "firebrick", "progen1" = "darkgoldenrod1", "progen2" = "darkorange", "early.progen" = "peachpuff3", "unknown" = "slategray")
+Apoc_TAI <- ggplot(TAI) + geom_point(aes(x=reorder(cluster,TAI), y=TAI, colour= factor(cluster)), size = 3) + RotatedAxis() +  scale_color_manual(values = custom_colors) + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), legend.position = "none")
+Apoc_TAI
+
+load("cnidocyte_coleetal_2024.Robj")
+phylostrata_Nv <- read.table("45351_gene_ages.tsv",sep = "\t")
+#change the column names
+colnames(phylostrata_Nv) <- c("GeneID","name_PS","phylostratum","score")
+#calculate the average expression across each of the clusters
+Nv_average <- log1p(AverageExpression(cnidocyte)$RNA)
+Nv_average <- rownames_to_column(as.data.frame(Nv_average), "GeneID")
+#omits any NAs in the data
+phylostrata_Nv <- na.omit(phylostrata_Nv)
+#subsets only genes that are in the phylostrata data
+Nv_average <- subset(Nv_average, subset = Nv_average$GeneID %in% phylostrata_Nv$GeneID)
+Phylo_expr_Nv <- match_map(Nv_average, phylostrata_Nv[,c("phylostratum","GeneID")])
+TAI <- as.data.frame(TAI(Phylo_expr_Nv))
+TAI <- rownames_to_column(TAI, var= "cluster")
+colnames(TAI) <- c("cluster","TAI")
+custom_colors <- c("spirocyte" = "mediumpurple", "planula.nem" = "lightblue", "planula.spir" = "hotpink", "nem.1" = "royalblue", "nem.2" = "royalblue", "nep.8" = "cyan3", "mature" = "firebrick", "planula.mat" = "firebrick", "maturing.1" = "firebrick", "spirocyte.maturing" = "firebrick", "pSC" = "darkgoldenrod1", "early" = "darkgoldenrod1", "gast.1" = "peachpuff3")
+Nvec_TAI <- ggplot(TAI) + geom_point(aes(x=reorder(cluster,TAI), y=TAI, colour= factor(cluster)), size = 3) + RotatedAxis() +  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), legend.position = "none") + scale_color_manual(values = custom_colors)
+Nvec_TAI
+
+Ap_neuro <- readRDS(file = "neurogland_subset.rds")
+phylostrata_Ap <- read.table("165419_gene_ages.tsv",sep = "\t")
+#change the column names
+colnames(phylostrata_Ap) <- c("GeneID","name_PS","phylostratum","score")
+#calculate the average expression across each of the clusters
+Ap_average <- log1p(AverageExpression(Ap_neuro)$RNA)
+Ap_average <- rownames_to_column(as.data.frame(Ap_average), "GeneID")
+#omits any NAs in the data
+phylostrata_Ap <- na.omit(phylostrata_Ap)
+#subsets only genes that are in the phylostrata data
+Ap_average <- subset(Ap_average, subset = Ap_average$GeneID %in% phylostrata_Ap$GeneID)
+Phylo_expr_Ap <- match_map(Ap_average, phylostrata_Ap[,c("phylostratum","GeneID")])
+TAI <- as.data.frame(TAI(Phylo_expr_Ap))
+TAI <- rownames_to_column(TAI, var= "cluster")
+colnames(TAI) <- c("cluster","TAI")
+Apoc_TAI <- ggplot(TAI) + geom_point(aes(x=reorder(cluster,TAI), y=TAI, colour= factor(cluster))) + RotatedAxis() +  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), legend.position = "none")
+Apoc_TAI
